@@ -51,7 +51,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90, RMA & Sold Tracking • Direct Excel Import</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • Bulk Intake • 30/60/90, RMA & Sold Tracking</p>
                 </div>
             </div>
 
@@ -59,6 +59,9 @@
             <div class="flex flex-wrap items-center gap-2">
                 <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> Add Item
+                </button>
+                <button onclick="openBulkModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group"></i> Bulk Add
                 </button>
                 <button onclick="openRmaReportModal()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice"></i> RMA Report
@@ -308,6 +311,93 @@
         </div>
     </div>
 
+    <!-- Bulk Add Modal -->
+    <div id="bulkModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-amber-500"></i> Bulk Intake (Multiple Identical Laptops/Units)
+                </h3>
+                <button onclick="closeBulkModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="bulkForm" onsubmit="handleBulkSubmit(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Category / Type *</label>
+                        <select id="b_category" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="refurb_laptop" selected>Refurbished Laptop</option>
+                            <option value="new_laptop">New Laptop</option>
+                            <option value="refurb_desktop">Refurbished Desktop</option>
+                            <option value="new_desktop">New Desktop</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Brand *</label>
+                        <input type="text" id="b_brand" required placeholder="e.g. Dell, HP, Lenovo" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Model *</label>
+                        <input type="text" id="b_model" required placeholder="e.g. Latitude 5490" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Vendor</label>
+                        <input type="text" id="b_vendor" placeholder="e.g. Ingram, Direct" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Condition</label>
+                        <input type="text" id="b_condition" value="Grade A Refurb" placeholder="e.g. Grade A" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-amber-400 mb-1">Quantity of Units *</label>
+                        <input type="number" id="b_qty" min="1" max="100" value="5" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white font-bold focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Cost Per Unit ($)</label>
+                        <input type="number" step="0.01" id="b_cost" placeholder="0.00" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Retail Per Unit ($)</label>
+                        <input type="number" step="0.01" id="b_retail" placeholder="0.00" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Purchase Date (Same for all)</label>
+                        <input type="date" id="b_purchaseDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Receive Date (Same for all) *</label>
+                        <input type="date" id="b_receiveDate" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-amber-400 mb-1">Serial Numbers (One per line, or comma separated - optional)</label>
+                    <textarea id="b_serials" rows="3" placeholder="Leave blank to auto-generate serial placeholders (e.g. REF-LAT-1, REF-LAT-2...)" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500 font-mono"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Shared Notes</label>
+                    <input type="text" id="b_notes" placeholder="Batch notes..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeBulkModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">Cancel</button>
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-xs font-semibold transition shadow">Receive Bulk Units</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- RMA Report Modal -->
     <div id="rmaReportModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl">
@@ -454,6 +544,17 @@
             document.getElementById('itemModal').classList.add('hidden');
         }
 
+        function openBulkModal() {
+            document.getElementById('bulkModal').classList.remove('hidden');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('b_receiveDate').value = today;
+            document.getElementById('b_purchaseDate').value = today;
+        }
+
+        function closeBulkModal() {
+            document.getElementById('bulkModal').classList.add('hidden');
+        }
+
         function openRmaReportModal() {
             document.getElementById('rmaReportModal').classList.remove('hidden');
             renderRmaReportTable();
@@ -518,6 +619,79 @@
             } catch (err) {
                 console.error("Error saving:", err);
                 alert("Failed to save item.");
+            }
+        }
+
+        async function handleBulkSubmit(e) {
+            e.preventDefault();
+            const category = document.getElementById('b_category').value;
+            const brand = document.getElementById('b_brand').value.trim();
+            const model = document.getElementById('b_model').value.trim();
+            const vendor = document.getElementById('b_vendor').value.trim();
+            const condition = document.getElementById('b_condition').value.trim();
+            const qty = parseInt(document.getElementById('b_qty').value) || 1;
+            const cost = parseFloat(document.getElementById('b_cost').value) || 0;
+            const retail = parseFloat(document.getElementById('b_retail').value) || 0;
+            const profit = retail - cost;
+            const margin = retail > 0 ? (profit / retail) * 100 : 0;
+            const purchaseDate = document.getElementById('b_purchaseDate').value;
+            const receiveDate = document.getElementById('b_receiveDate').value;
+            const rawSerials = document.getElementById('b_serials').value.trim();
+            const notes = document.getElementById('b_notes').value.trim();
+
+            let serialList = [];
+            if (rawSerials) {
+                serialList = rawSerials.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+            }
+
+            const batchItems = [];
+            for (let i = 0; i < qty; i++) {
+                const serial = serialList[i] || `BULK-${model.toUpperCase().replace(/\s+/g, '-')}-${Date.now().toString().slice(-4)}-${i + 1}`;
+                batchItems.push({
+                    category: category,
+                    serial: serial,
+                    brand: brand,
+                    model: model,
+                    vendor: vendor,
+                    condition: condition,
+                    cost: cost,
+                    retail: retail,
+                    profit: profit,
+                    margin: margin,
+                    passed: "Yes",
+                    status: "In Stock",
+                    location: "Store",
+                    purchaseDate: purchaseDate,
+                    receiveDate: receiveDate,
+                    rmaDate: "",
+                    soldDate: "",
+                    rmaReason: "",
+                    techNotes: "",
+                    notes: notes,
+                    archived: false,
+                    createdAt: new Date().toISOString()
+                });
+            }
+
+            try {
+                if (window.firebaseModules && window.db) {
+                    const batch = window.firebaseModules.writeBatch(window.db);
+                    batchItems.forEach(item => {
+                        const docRef = window.firebaseModules.doc(window.inventoryCollection);
+                        batch.set(docRef, item);
+                    });
+                    await batch.commit();
+                } else {
+                    batchItems.forEach((item, idx) => {
+                        window.inventoryData.push({ id: 'local_bulk_' + Date.now() + '_' + idx, ...item });
+                    });
+                    renderApp();
+                }
+                closeBulkModal();
+                alert(`Successfully received ${qty} units in bulk!`);
+            } catch (err) {
+                console.error("Bulk add error:", err);
+                alert("Failed to save bulk units.");
             }
         }
 
@@ -599,7 +773,6 @@
             return diffDays >= 0 ? diffDays : 0;
         }
 
-        // Direct Excel (.xlsx) Import Handler
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -624,8 +797,18 @@
                         const status = row.Status || "In Stock";
                         const soldDate = row.SoldDate || "";
 
+                        const conditionStr = String(row.Condition || "").toLowerCase();
+                        const modelStr = String(row.Model || "").toLowerCase();
+                        const isRefurb = conditionStr.includes("refurb") || conditionStr.includes("grade") || modelStr.includes("refurb");
+                        const isDesktop = modelStr.includes("desktop") || modelStr.includes("tower") || modelStr.includes("optiplex");
+
+                        let assignedCategory = "new_laptop";
+                        if (isDesktop && isRefurb) assignedCategory = "refurb_desktop";
+                        else if (isDesktop) assignedCategory = "new_desktop";
+                        else if (isRefurb) assignedCategory = "refurb_laptop";
+
                         return {
-                            category: (row.Model || "").toLowerCase().includes("desktop") ? "new_desktop" : "new_laptop",
+                            category: assignedCategory,
                             serial: String(row.Serial || row.Serial_Number || ""),
                             brand: String(row.Brand || ""),
                             model: String(row.Model || ""),
@@ -801,7 +984,7 @@
             if (items.length === 0) {
                 sectionDiv.innerHTML = headerHTML + `
                     <div class="p-8 text-center text-slate-500 text-xs">
-                        No inventory records found in this category. Click <b>+ Add Item</b> above or import an Excel spreadsheet.
+                        No inventory records found in this category. Click <b>+ Add Item</b> or <b>Bulk Add</b> above.
                     </div>
                 `;
                 container.appendChild(sectionDiv);
