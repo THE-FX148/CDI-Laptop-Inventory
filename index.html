@@ -37,7 +37,7 @@
 
     <!-- Top Navigation Header -->
     <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="w-full px-6 py-4 flex flex-col xl:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
                 <div class="bg-red-600 p-2.5 rounded-xl shadow-md text-white">
                     <i class="fa-solid fa-laptop text-xl"></i>
@@ -49,7 +49,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90 & RMA Tracking • Profit Analytics</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90, RMA & Sold Tracking • Profit Analytics</p>
                 </div>
             </div>
 
@@ -73,10 +73,10 @@
     </header>
 
     <!-- Main Dashboard Body -->
-    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <main class="w-full px-6 py-6 space-y-6">
 
-        <!-- KPI Summary Cards (Including 30, 60, 90, RMA) -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <!-- KPI Summary Cards (Including 30, 60, 90, RMA, Sold) -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-9 gap-3">
             <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
                 <p id="kpiNewLaptops" class="text-xl font-extrabold text-white mt-1">0</p>
@@ -108,6 +108,10 @@
             <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-xl shadow-sm">
                 <p class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">RMA Active</p>
                 <p id="kpiRma" class="text-xl font-extrabold text-sky-400 mt-1">0</p>
+            </div>
+            <div class="bg-emerald-950/40 border border-emerald-800/60 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Sold Total</p>
+                <p id="kpiSold" class="text-xl font-extrabold text-emerald-400 mt-1">0</p>
             </div>
         </div>
 
@@ -550,12 +554,15 @@
             let over60Count = 0;
             let over90Count = 0;
             let rmaActiveCount = 0;
+            let soldTotalCount = 0;
 
             activeItems.forEach(i => {
                 const days = calculateDaysInStock(i.receiveDate, i.soldDate, i.status);
-                const isSoldOrArchived = (i.status === 'Sold' || i.soldDate);
+                const isSold = (i.status === 'Sold' || Boolean(i.soldDate));
                 
-                if (!isSoldOrArchived) {
+                if (isSold) {
+                    soldTotalCount++;
+                } else {
                     if (days > 30) over30Count++;
                     if (days > 60) over60Count++;
                     if (days > 90) over90Count++;
@@ -570,6 +577,7 @@
             document.getElementById('kpiOver60').textContent = over60Count;
             document.getElementById('kpiOver90').textContent = over90Count;
             document.getElementById('kpiRma').textContent = rmaActiveCount;
+            document.getElementById('kpiSold').textContent = soldTotalCount;
 
             const filtered = window.inventoryData.filter(item => {
                 if (currentTab === 'archived') {
@@ -617,13 +625,40 @@
             const sectionDiv = document.createElement('div');
             sectionDiv.className = "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm";
 
+            // Count metrics for this specific section/category
+            let secOver30 = 0;
+            let secOver60 = 0;
+            let secOver90 = 0;
+            let secRma = 0;
+            let secSold = 0;
+
+            items.forEach(i => {
+                const days = calculateDaysInStock(i.receiveDate, i.soldDate, i.status);
+                const isSold = (i.status === 'Sold' || Boolean(i.soldDate));
+                if (isSold) {
+                    secSold++;
+                } else {
+                    if (days > 30) secOver30++;
+                    if (days > 60) secOver60++;
+                    if (days > 90) secOver90++;
+                }
+                if (i.rmaDate) secRma++;
+            });
+
             let headerHTML = `
-                <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                <div class="p-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900/50">
                     <div>
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ${title} (${items.length})
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ${title} (${items.length} Total)
                         </h2>
                         <p class="text-xs text-slate-400">${subtitle}</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                        <span class="bg-yellow-950/50 text-yellow-400 px-2.5 py-1 rounded-lg border border-yellow-800/60 font-semibold">>30d: <b>${secOver30}</b></span>
+                        <span class="bg-orange-950/50 text-orange-400 px-2.5 py-1 rounded-lg border border-orange-800/60 font-semibold">>60d: <b>${secOver60}</b></span>
+                        <span class="bg-red-950/50 text-red-400 px-2.5 py-1 rounded-lg border border-red-800/60 font-semibold">>90d: <b>${secOver90}</b></span>
+                        <span class="bg-sky-950/50 text-sky-400 px-2.5 py-1 rounded-lg border border-sky-800/60 font-semibold">RMA: <b>${secRma}</b></span>
+                        <span class="bg-emerald-950/50 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-800/60 font-semibold">Sold: <b>${secSold}</b></span>
                     </div>
                 </div>
             `;
@@ -670,19 +705,22 @@
 
             items.forEach(item => {
                 const days = calculateDaysInStock(item.receiveDate, item.soldDate, item.status);
-                const isSold = (item.status === 'Sold' || item.soldDate);
+                const isSold = (item.status === 'Sold' || Boolean(item.soldDate));
                 const hasRma = Boolean(item.rmaDate);
                 const rmaDays = hasRma ? calculateRmaDays(item.rmaDate) : 0;
 
-                // Shading logic as requested:
+                // Shading logic:
+                // Sold items: normal or subtle emerald tint
                 // RMA out: gray-bluish shade
                 // Stock >90: red shade
                 // Stock >60: orange shade
                 // Stock >30: yellow shade
                 let rowBg = 'hover:bg-slate-800/40';
-                if (hasRma && !isSold && !isArchive) {
+                if (isSold) {
+                    rowBg = 'bg-emerald-950/20 hover:bg-emerald-900/30';
+                } else if (hasRma && !isArchive) {
                     rowBg = 'bg-slate-800/60 border-l-4 border-sky-400 hover:bg-slate-800/90';
-                } else if (!isSold && !isArchive) {
+                } else if (!isArchive) {
                     if (days > 90) {
                         rowBg = 'bg-red-950/40 hover:bg-red-900/40';
                     } else if (days > 60) {
@@ -746,8 +784,8 @@
                             <input type="date" value="${item.receiveDate || ''}" onchange="updateFieldInline('${item.id}', 'receiveDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
                         </td>
                         <td class="p-2.5 font-bold">
-                            <span class="${days > 90 ? 'text-red-400' : days > 60 ? 'text-orange-400' : days > 30 ? 'text-yellow-400' : 'text-slate-300'}">
-                                ${days}d ${days > 90 ? '⚠️ >90d' : days > 60 ? '⚠️ >60d' : days > 30 ? '⚠️ >30d' : ''}
+                            <span class="${isSold ? 'text-emerald-400' : days > 90 ? 'text-red-400' : days > 60 ? 'text-orange-400' : days > 30 ? 'text-yellow-400' : 'text-slate-300'}">
+                                ${days}d ${isSold ? '✓ Sold' : days > 90 ? '⚠️ >90d' : days > 60 ? '⚠️ >60d' : days > 30 ? '⚠️ >30d' : ''}
                             </span>
                         </td>
                         <td class="p-2.5">
@@ -830,7 +868,6 @@
                     if (!Array.isArray(imported)) throw new Error("Invalid format");
                     if (window.firebaseModules && window.db) {
                         const batch = window.firebaseModules.writeBatch(window.db);
-                        imported.exported = true;
                         imported.forEach(item => {
                             const { id, ...data } = item;
                             const docRef = window.firebaseModules.doc(window.inventoryCollection);
