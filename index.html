@@ -51,7 +51,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • Bulk Intake • 30/60/90, RMA & Sold Tracking</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • Bulk Intake • Exclusive Aging Tiers & RMA Tracking</p>
                 </div>
             </div>
 
@@ -87,7 +87,7 @@
     <!-- Main Dashboard Body -->
     <main class="w-full px-6 py-6 space-y-6">
 
-        <!-- KPI Summary Cards -->
+        <!-- KPI Summary Cards (Mutually Exclusive Aging Tiers) -->
         <div class="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-9 gap-3">
             <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
@@ -105,16 +105,16 @@
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Refurb Desktops</p>
                 <p id="kpiRefurbDesktops" class="text-xl font-extrabold text-white mt-1">0</p>
             </div>
-            <div class="bg-yellow-950/40 border border-yellow-800/60 p-3 rounded-xl shadow-sm">
-                <p class="text-[11px] font-semibold text-yellow-400 uppercase tracking-wider">>30 Days</p>
+            <div class="bg-yellow-950/40 border border-yellow-800/60 p-3 rounded-xl shadow-sm" title="Items aged 31 to 60 days">
+                <p class="text-[11px] font-semibold text-yellow-400 uppercase tracking-wider">31–60 Days</p>
                 <p id="kpiOver30" class="text-xl font-extrabold text-yellow-400 mt-1">0</p>
             </div>
-            <div class="bg-orange-950/40 border border-orange-800/60 p-3 rounded-xl shadow-sm">
-                <p class="text-[11px] font-semibold text-orange-400 uppercase tracking-wider">>60 Days</p>
+            <div class="bg-orange-950/40 border border-orange-800/60 p-3 rounded-xl shadow-sm" title="Items aged 61 to 90 days">
+                <p class="text-[11px] font-semibold text-orange-400 uppercase tracking-wider">61–90 Days</p>
                 <p id="kpiOver60" class="text-xl font-extrabold text-orange-400 mt-1">0</p>
             </div>
-            <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-xl shadow-sm">
-                <p class="text-[11px] font-semibold text-red-400 uppercase tracking-wider">>90 Days</p>
+            <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-xl shadow-sm" title="Items aged 91+ days">
+                <p class="text-[11px] font-semibold text-red-400 uppercase tracking-wider">91+ Days</p>
                 <p id="kpiOver90" class="text-xl font-extrabold text-red-400 mt-1">0</p>
             </div>
             <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-xl shadow-sm">
@@ -869,9 +869,9 @@
             document.getElementById('kpiNewDesktops').textContent = activeItems.filter(i => i.category === 'new_desktop').length;
             document.getElementById('kpiRefurbDesktops').textContent = activeItems.filter(i => i.category === 'refurb_desktop').length;
             
-            let over30Count = 0;
-            let over60Count = 0;
-            let over90Count = 0;
+            let over30Count = 0; // 31-60 days
+            let over60Count = 0; // 61-90 days
+            let over90Count = 0; // 91+ days
             let rmaActiveCount = 0;
             let soldTotalCount = 0;
 
@@ -882,9 +882,14 @@
                 if (isSold) {
                     soldTotalCount++;
                 } else {
-                    if (days > 30) over30Count++;
-                    if (days > 60) over60Count++;
-                    if (days > 90) over90Count++;
+                    // Mutually exclusive aging tier counting
+                    if (days >= 91) {
+                        over90Count++;
+                    } else if (days >= 61) {
+                        over60Count++;
+                    } else if (days >= 31) {
+                        over30Count++;
+                    }
                 }
 
                 if (i.rmaDate) {
@@ -956,9 +961,13 @@
                 if (isSold) {
                     secSold++;
                 } else {
-                    if (days > 30) secOver30++;
-                    if (days > 60) secOver60++;
-                    if (days > 90) secOver90++;
+                    if (days >= 91) {
+                        secOver90++;
+                    } else if (days >= 61) {
+                        secOver60++;
+                    } else if (days >= 31) {
+                        secOver30++;
+                    }
                 }
                 if (i.rmaDate) secRma++;
             });
@@ -972,9 +981,9 @@
                         <p class="text-xs text-slate-400">${subtitle}</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-[11px]">
-                        <span class="bg-yellow-950/50 text-yellow-400 px-2.5 py-1 rounded-lg border border-yellow-800/60 font-semibold">>30d: <b>${secOver30}</b></span>
-                        <span class="bg-orange-950/50 text-orange-400 px-2.5 py-1 rounded-lg border border-orange-800/60 font-semibold">>60d: <b>${secOver60}</b></span>
-                        <span class="bg-red-950/50 text-red-400 px-2.5 py-1 rounded-lg border border-red-800/60 font-semibold">>90d: <b>${secOver90}</b></span>
+                        <span class="bg-yellow-950/50 text-yellow-400 px-2.5 py-1 rounded-lg border border-yellow-800/60 font-semibold">31–60d: <b>${secOver30}</b></span>
+                        <span class="bg-orange-950/50 text-orange-400 px-2.5 py-1 rounded-lg border border-orange-800/60 font-semibold">61–90d: <b>${secOver60}</b></span>
+                        <span class="bg-red-950/50 text-red-400 px-2.5 py-1 rounded-lg border border-red-800/60 font-semibold">91+d: <b>${secOver90}</b></span>
                         <span class="bg-sky-950/50 text-sky-400 px-2.5 py-1 rounded-lg border border-sky-800/60 font-semibold">RMA: <b>${secRma}</b></span>
                         <span class="bg-emerald-950/50 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-800/60 font-semibold">Sold: <b>${secSold}</b></span>
                     </div>
@@ -1035,11 +1044,11 @@
                 } else if (hasRma && !isArchive) {
                     rowBg = 'bg-slate-800/60 border-l-4 border-sky-400 hover:bg-slate-800/90';
                 } else if (!isArchive) {
-                    if (days > 90) {
+                    if (days >= 91) {
                         rowBg = 'bg-red-950/40 hover:bg-red-900/40';
-                    } else if (days > 60) {
+                    } else if (days >= 61) {
                         rowBg = 'bg-orange-950/40 hover:bg-orange-900/40';
-                    } else if (days > 30) {
+                    } else if (days >= 31) {
                         rowBg = 'bg-yellow-950/30 hover:bg-yellow-900/30';
                     }
                 }
@@ -1098,8 +1107,8 @@
                             <input type="date" value="${item.receiveDate || ''}" onchange="updateFieldInline('${item.id}', 'receiveDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
                         </td>
                         <td class="p-2.5 font-bold">
-                            <span class="${isSold ? 'text-emerald-400' : days > 90 ? 'text-red-400' : days > 60 ? 'text-orange-400' : days > 30 ? 'text-yellow-400' : 'text-slate-300'}">
-                                ${days}d ${isSold ? '✓ Sold' : days > 90 ? '⚠️ >90d' : days > 60 ? '⚠️ >60d' : days > 30 ? '⚠️ >30d' : ''}
+                            <span class="${isSold ? 'text-emerald-400' : days >= 91 ? 'text-red-400' : days >= 61 ? 'text-orange-400' : days >= 31 ? 'text-yellow-400' : 'text-slate-300'}">
+                                ${days}d ${isSold ? '✓ Sold' : days >= 91 ? '⚠️ 91+d' : days >= 61 ? '⚠️ 61-90d' : days >= 31 ? '⚠️ 31-60d' : ''}
                             </span>
                         </td>
                         <td class="p-2.5">
