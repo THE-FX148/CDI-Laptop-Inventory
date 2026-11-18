@@ -6,6 +6,8 @@
     <title>Computer & Laptop Inventory Tracker (Firebase)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Direct Excel .xlsx Import Support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         .table-container {
             overflow-x: auto;
@@ -49,7 +51,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90, RMA & Sold Tracking • Profit Analytics</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90, RMA & Sold Tracking • Direct Excel Import</p>
                 </div>
             </div>
 
@@ -61,6 +63,10 @@
                 <button onclick="openRmaReportModal()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
                     <i class="fa-solid fa-file-invoice"></i> RMA Report
                 </button>
+                <label class="bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer flex items-center gap-1.5 shadow" title="Import Excel File (.xlsx)">
+                    <i class="fa-solid fa-file-excel"></i> Import Excel
+                    <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="importExcel(event)" class="hidden">
+                </label>
                 <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5" title="Export CSV">
                     <i class="fa-solid fa-file-csv text-emerald-400"></i> CSV
                 </button>
@@ -78,7 +84,7 @@
     <!-- Main Dashboard Body -->
     <main class="w-full px-6 py-6 space-y-6">
 
-        <!-- KPI Summary Cards (Including 30, 60, 90, RMA, Sold) -->
+        <!-- KPI Summary Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-9 gap-3">
             <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
@@ -322,9 +328,7 @@
                 </div>
             </div>
             <div class="p-6 overflow-y-auto flex-1">
-                <div id="rmaReportTableContainer" class="table-container">
-                    <!-- Populated dynamically -->
-                </div>
+                <div id="rmaReportTableContainer" class="table-container"></div>
             </div>
             <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-between items-center text-xs text-slate-400">
                 <span id="rmaReportCount">Total Active RMAs: 0</span>
@@ -595,6 +599,80 @@
             return diffDays >= 0 ? diffDays : 0;
         }
 
+        // Direct Excel (.xlsx) Import Handler
+        function importExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rawRows = XLSX.utils.sheet_to_json(sheet);
+
+                    if (!rawRows || rawRows.length === 0) {
+                        alert("No rows found in the Excel sheet.");
+                        return;
+                    }
+
+                    const batchRecords = rawRows.map(row => {
+                        const cost = parseFloat(row.Cost) || 0;
+                        const retail = parseFloat(row.Retail) || 0;
+                        const profit = retail - cost;
+                        const margin = retail > 0 ? (profit / retail) * 100 : 0;
+                        const status = row.Status || "In Stock";
+                        const soldDate = row.SoldDate || "";
+
+                        return {
+                            category: (row.Model || "").toLowerCase().includes("desktop") ? "new_desktop" : "new_laptop",
+                            serial: String(row.Serial || row.Serial_Number || ""),
+                            brand: String(row.Brand || ""),
+                            model: String(row.Model || ""),
+                            vendor: String(row.Vendor || ""),
+                            condition: String(row.Condition || ""),
+                            cost: cost,
+                            retail: retail,
+                            profit: profit,
+                            margin: margin,
+                            passed: String(row.Passed || "Yes"),
+                            status: status,
+                            location: String(row.Location || "Store"),
+                            purchaseDate: String(row.PurchaseDate || ""),
+                            receiveDate: String(row.ReceiveDate || new Date().toISOString().split('T')[0]),
+                            rmaDate: String(row.RMADate || row.RmaDate || ""),
+                            soldDate: String(soldDate),
+                            rmaReason: String(row.RmaReason || row.RMA_Reason || ""),
+                            techNotes: String(row.TechNotes || row.Tech_Notes || ""),
+                            notes: String(row.Notes || ""),
+                            archived: (status === "Sold" || Boolean(soldDate))
+                        };
+                    });
+
+                    if (window.firebaseModules && window.db) {
+                        const batch = window.firebaseModules.writeBatch(window.db);
+                        batchRecords.forEach(item => {
+                            const docRef = window.firebaseModules.doc(window.inventoryCollection);
+                            batch.set(docRef, item);
+                        });
+                        await batch.commit();
+                    } else {
+                        batchRecords.forEach((item, idx) => {
+                            window.inventoryData.push({ id: 'local_excel_' + idx + '_' + Date.now(), ...item });
+                        });
+                        renderApp();
+                    }
+
+                    alert(`Successfully imported ${batchRecords.length} items from Excel into Firebase!`);
+                    document.getElementById('excelFile').value = '';
+                } catch (err) {
+                    console.error("Excel import error:", err);
+                    alert("Failed to parse Excel file. Ensure it is a valid .xlsx spreadsheet.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
         function renderApp() {
             const searchVal = document.getElementById('searchInput').value.toLowerCase();
             const statusVal = document.getElementById('statusFilter').value;
@@ -723,7 +801,7 @@
             if (items.length === 0) {
                 sectionDiv.innerHTML = headerHTML + `
                     <div class="p-8 text-center text-slate-500 text-xs">
-                        No inventory records found in this category. Click <b>+ Add Item</b> above.
+                        No inventory records found in this category. Click <b>+ Add Item</b> above or import an Excel spreadsheet.
                     </div>
                 `;
                 container.appendChild(sectionDiv);
@@ -977,11 +1055,10 @@
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const a = URL.createObjectURL(blob);
-            const aElem = document.createElement('a');
-            aElem.href = url;
-            aElem.download = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
-            aElem.click();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
         }
 
         function exportJSON() {
