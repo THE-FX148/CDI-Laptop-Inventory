@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computer & Laptop Inventory Tracker (Firebase)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .table-container {
+            overflow-x: auto;
+            position: relative;
+        }
+        .sticky-action {
+            position: sticky;
+            right: 0;
+            background-color: #1e293b;
+            z-index: 10;
+            box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.3);
+        }
+        .sticky-action-light {
+            position: sticky;
+            right: 0;
+            background-color: #ffffff;
+            z-index: 10;
+            box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        /* Custom scrollbar for wide tables */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-red-600 p-2.5 rounded-xl shadow-md text-white">
+                    <i class="fa-solid fa-laptop text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Inventory & Stock Control
+                        <span id="syncStatusBadge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • >60 Days Stock Alert • Profit Tracking</p>
+                </div>
+            </div>
+
+            <!-- Global Action Controls -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Add Item
+                </button>
+                <button onclick="loadSampleData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-database text-xs text-blue-400"></i> Sample Data
+                </button>
+                <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5" title="Export CSV">
+                    <i class="fa-solid fa-file-csv text-emerald-400"></i> CSV
+                </button>
+                <button onclick="exportJSON()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5" title="Backup JSON">
+                    <i class="fa-solid fa-file-arrow-down text-sky-400"></i> Backup
+                </button>
+                <label class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition cursor-pointer flex items-center gap-1.5" title="Restore JSON">
+                    <i class="fa-solid fa-file-arrow-up text-amber-400"></i> Restore
+                    <input type="file" id="importFile" accept=".json" onchange="importJSON(event)" class="hidden">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Body -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
+                <p id="kpiNewLaptops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Refurb Laptops</p>
+                <p id="kpiRefurbLaptops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">New Desktops</p>
+                <p id="kpiNewDesktops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Refurb Desktops</p>
+                <p id="kpiRefurbDesktops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-red-400 uppercase tracking-wider">>60 Days Alert</p>
+                <p id="kpiOver60" class="text-2xl font-extrabold text-red-400 mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
+                <p class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Sold Units</p>
+                <p id="kpiSold" class="text-2xl font-extrabold text-emerald-400 mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- Filter Navigation & Search Bar -->
+        <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
+            <!-- Category Tabs -->
+            <div class="flex flex-wrap items-center gap-1.5" id="categoryTabs">
+                <button onclick="switchTab('all')" data-tab="all" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-red-600 text-white transition shadow">
+                    All Active (Split)
+                </button>
+                <button onclick="switchTab('new_laptop')" data-tab="new_laptop" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    New Laptops
+                </button>
+                <button onclick="switchTab('refurb_laptop')" data-tab="refurb_laptop" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    Refurb Laptops
+                </button>
+                <button onclick="switchTab('new_desktop')" data-tab="new_desktop" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    New Desktops
+                </button>
+                <button onclick="switchTab('refurb_desktop')" data-tab="refurb_desktop" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+                    Refurb Desktops
+                </button>
+                <button onclick="switchTab('archived')" data-tab="archived" class="tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5">
+                    Archived <span id="archiveCountBadge" class="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                </button>
+            </div>
+
+            <!-- Search and Status Filter -->
+            <div class="flex items-center gap-3">
+                <div class="relative flex-1 sm:w-64">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search text-xs"></i>
+                    </span>
+                    <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search serial, brand, vendor..." class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500">
+                </div>
+                <select id="statusFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500">
+                    <option value="all">Status: All</option>
+                    <option value="In Stock">In Stock</option>
+                    <option value="Ready">Ready</option>
+                    <option value="Sold">Sold</option>
+                    <option value="RMA">RMA</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Inventory Sections Container -->
+        <div id="inventoryContainer" class="space-y-6">
+            <!-- Dynamically rendered tables -->
+        </div>
+
+    </main>
+
+    <!-- Modal Form for Adding/Editing Item -->
+    <div id="itemModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
+                <h3 id="modalTitle" class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-laptop text-red-500"></i> Add New Inventory Item
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="itemForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editId">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Category / Type *</label>
+                        <select id="f_category" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                            <option value="new_laptop">New Laptop</option>
+                            <option value="refurb_laptop">Refurbished Laptop</option>
+                            <option value="new_desktop">New Desktop</option>
+                            <option value="refurb_desktop">Refurbished Desktop</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Serial Number *</label>
+                        <input type="text" id="f_serial" required placeholder="e.g. AP-MBP-9921" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Brand *</label>
+                        <input type="text" id="f_brand" required placeholder="e.g. Apple, Dell, HP" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Model *</label>
+                        <input type="text" id="f_model" required placeholder="e.g. MacBook Pro 16" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Vendor</label>
+                        <input type="text" id="f_vendor" placeholder="e.g. Apple Direct, Ingram" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Condition</label>
+                        <input type="text" id="f_condition" placeholder="e.g. New, Grade A, Refurb" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Cost ($)</label>
+                        <input type="number" step="0.01" id="f_cost" oninput="calcProfit()" placeholder="0.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Retail ($)</label>
+                        <input type="number" step="0.01" id="f_retail" oninput="calcProfit()" placeholder="0.00" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-400 mb-1">Profit ($)</label>
+                        <input type="text" id="f_profit" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-emerald-400 font-bold" value="$0.00">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-emerald-400 mb-1">Margin (%)</label>
+                        <input type="text" id="f_margin" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-emerald-400 font-bold" value="0.0%">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Passed QC?</label>
+                        <select id="f_passed" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Status</label>
+                        <select id="f_status" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                            <option value="In Stock">In Stock</option>
+                            <option value="Ready">Ready</option>
+                            <option value="Sold">Sold</option>
+                            <option value="RMA">RMA</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Location</label>
+                        <select id="f_location" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                            <option value="Store">Store</option>
+                            <option value="Sold">Sold</option>
+                            <option value="Warehouse">Warehouse</option>
+                            <option value="Bench">Bench</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Purchase Date</label>
+                        <input type="date" id="f_purchaseDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Receive Date *</label>
+                        <input type="date" id="f_receiveDate" required class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">RMA Date</label>
+                        <input type="date" id="f_rmaDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Sold Date</label>
+                        <input type="date" id="f_soldDate" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Notes</label>
+                    <textarea id="f_notes" rows="2" placeholder="Additional notes or specifications..." class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-red-500"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">Cancel</button>
+                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-xs font-semibold transition shadow">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & App Initialization Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzcv3-k6TKKVawZBFzdib0Q-s7napkS_k",
+            authDomain: "laptop-inventory-ea045.firebaseapp.com",
+            projectId: "laptop-inventory-ea045",
+            storageBucket: "laptop-inventory-ea045.firebasestorage.app",
+            messagingSenderId: "966034748446",
+            appId: "1:966034748446:web:6b6e57872baf3c3d6f2a0f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const inventoryCollection = collection(db, "laptops");
+
+        window.db = db;
+        window.inventoryCollection = inventoryCollection;
+        window.firebaseModules = { addDoc, updateDoc, deleteDoc, doc, writeBatch };
+
+        // Real-time listener for Firestore collection
+        onSnapshot(inventoryCollection, (snapshot) => {
+            const items = [];
+            snapshot.forEach((docSnap) => {
+                items.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            window.inventoryData = items;
+            renderApp();
+            updateSyncStatus('synced');
+        }, (error) => {
+            console.error("Firestore sync error:", error);
+            updateSyncStatus('error');
+        });
+    </script>
+
+    <!-- App Logic Script -->
+    <script>
+        window.inventoryData = window.inventoryData || [];
+        let currentTab = 'all';
+
+        function updateSyncStatus(status) {
+            const badge = document.getElementById('syncStatusBadge');
+            if (!badge) return;
+            if (status === 'synced') {
+                badge.className = "text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Synced to Firebase`;
+            } else if (status === 'error') {
+                badge.className = "text-xs px-2 py-0.5 rounded-full font-medium bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400"></span> Firestore Sync Error`;
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tab) {
+                    btn.className = "tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-red-600 text-white transition shadow";
+                } else {
+                    btn.className = "tab-btn px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition";
+                }
+            });
+            renderApp();
+        }
+
+        function calcProfit() {
+            const cost = parseFloat(document.getElementById('f_cost').value) || 0;
+            const retail = parseFloat(document.getElementById('f_retail').value) || 0;
+            const profit = retail - cost;
+            const margin = retail > 0 ? (profit / retail) * 100 : 0;
+
+            document.getElementById('f_profit').value = `$${profit.toFixed(2)}`;
+            document.getElementById('f_margin').value = `${margin.toFixed(1)}%`;
+        }
+
+        function openModal(id = null) {
+            document.getElementById('itemModal').classList.remove('hidden');
+            const today = new Date().toISOString().split('T')[0];
+            if (id) {
+                document.getElementById('modalTitle.textContent = "Edit Inventory Item"';
+                const item = window.inventoryData.find(i => i.id === id);
+                if (item) {
+                    document.getElementById('editId').value = item.id;
+                    document.getElementById('f_category').value = item.category || 'new_laptop';
+                    document.getElementById('f_serial').value = item.serial || '';
+                    document.getElementById('f_brand').value = item.brand || '';
+                    document.getElementById('f_model').value = item.model || '';
+                    document.getElementById('f_vendor').value = item.vendor || '';
+                    document.getElementById('f_condition').value = item.condition || '';
+                    document.getElementById('f_cost').value = item.cost || '';
+                    document.getElementById('f_retail').value = item.retail || '';
+                    document.getElementById('f_passed').value = item.passed || 'Yes';
+                    document.getElementById('f_status').value = item.status || 'In Stock';
+                    document.getElementById('f_location').value = item.location || 'Store';
+                    document.getElementById('f_purchaseDate').value = item.purchaseDate || '';
+                    document.getElementById('f_receiveDate').value = item.receiveDate || today;
+                    document.getElementById('f_rmaDate').value = item.rmaDate || '';
+                    document.getElementById('f_soldDate').value = item.soldDate || '';
+                    document.getElementById('f_notes').value = item.notes || '';
+                    calcProfit();
+                }
+            } else {
+                document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-laptop text-red-500"></i> Add New Inventory Item`;
+                document.getElementById('itemForm').reset();
+                document.getElementById('editId').value = '';
+                document.getElementById('f_receiveDate').value = today;
+                calcProfit();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('itemModal').classList.add('hidden');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const cost = parseFloat(document.getElementById('f_cost').value) || 0;
+            const retail = parseFloat(document.getElementById('f_retail').value) || 0;
+            const profit = retail - cost;
+            const margin = retail > 0 ? (profit / retail) * 100 : 0;
+
+            const payload = {
+                category: document.getElementById('f_category').value,
+                serial: document.getElementById('f_serial').value.trim(),
+                brand: document.getElementById('f_brand').value.trim(),
+                model: document.getElementById('f_model').value.trim(),
+                vendor: document.getElementById('f_vendor').value.trim(),
+                condition: document.getElementById('f_condition').value.trim(),
+                cost: cost,
+                retail: retail,
+                profit: profit,
+                margin: margin,
+                passed: document.getElementById('f_passed').value,
+                status: document.getElementById('f_status').value,
+                location: document.getElementById('f_location').value,
+                purchaseDate: document.getElementById('f_purchaseDate').value,
+                receiveDate: document.getElementById('f_receiveDate').value,
+                rmaDate: document.getElementById('f_rmaDate').value,
+                soldDate: document.getElementById('f_soldDate').value,
+                notes: document.getElementById('f_notes').value.trim(),
+                archived: false,
+                updatedAt: new Date().toISOString()
+            };
+
+            try {
+                if (id) {
+                    const docRef = window.firebaseModules.doc(window.db, "laptops", id);
+                    await window.firebaseModules.updateDoc(docRef, payload);
+                } else {
+                    payload.createdAt = new Date().toISOString();
+                    await window.firebaseModules.addDoc(window.inventoryCollection, payload);
+                }
+                closeModal();
+            } catch (err) {
+                console.error("Error saving to Firestore:", err);
+                alert("Failed to save item to Firebase. Check console for details.");
+            }
+        }
+
+        async function updateFieldInline(id, field, value) {
+            const item = window.inventoryData.find(i => i.id === id);
+            if (!item) return;
+            
+            item[field] = value;
+            if (field === 'cost' || field === 'retail') {
+                item.cost = parseFloat(item.cost) || 0;
+                item.retail = parseFloat(item.retail) || 0;
+                item.profit = item.retail - item.cost;
+                item.margin = item.retail > 0 ? (item.profit / item.retail) * 100 : 0;
+            }
+
+            try {
+                const docRef = window.firebaseModules.doc(window.db, "laptops", id);
+                await window.firebaseModules.updateDoc(docRef, {
+                    [field]: item[field],
+                    profit: item.profit !== undefined ? item.profit : item.profit,
+                    margin: item.margin !== undefined ? item.margin : item.margin
+                });
+            } catch (err) {
+                console.error("Inline update error:", err);
+            }
+        }
+
+        async function toggleArchive(id) {
+            const item = window.inventoryData.find(i => i.id === id);
+            if (!item) return;
+            const newArchivedState = !item.archived;
+            try {
+                const docRef = window.firebaseModules.doc(window.db, "laptops", id);
+                await window.firebaseModules.updateDoc(docRef, { archived: newArchivedState });
+            } catch (err) {
+                console.error("Archive toggle error:", err);
+            }
+        }
+
+        async function deleteItem(id) {
+            if (!confirm("Are you sure you want to permanently delete this item?")) return;
+            try {
+                const docRef = window.firebaseModules.doc(window.db, "laptops", id);
+                await window.firebaseModules.deleteDoc(docRef);
+            } catch (err) {
+                console.error("Delete error:", err);
+            }
+        }
+
+        function calculateDaysInStock(receiveDate, soldDate, status) {
+            if (!receiveDate) return 0;
+            const start = new Date(receiveDate);
+            let end = new Date();
+            if ((status === 'Sold' || soldDate) && soldDate) {
+                end = new Date(soldDate);
+            }
+            const diffTime = end - start;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 ? diffDays : 0;
+        }
+
+        function renderApp() {
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const statusVal = document.getElementById('statusFilter').value;
+
+            // Update Archive Badge Count
+            const archivedCount = window.inventoryData.filter(i => i.archived).length;
+            document.getElementById('archiveCountBadge').textContent = archivedCount;
+
+            // KPIs
+            const activeItems = window.inventoryData.filter(i => !i.archived);
+            document.getElementById('kpiNewLaptops').textContent = activeItems.filter(i => i.category === 'new_laptop').length;
+            document.getElementById('kpiRefurbLaptops').textContent = activeItems.filter(i => i.category === 'refurb_laptop').length;
+            document.getElementById('kpiNewDesktops').textContent = activeItems.filter(i => i.category === 'new_desktop').length;
+            document.getElementById('kpiRefurbDesktops').textContent = activeItems.filter(i => i.category === 'refurb_desktop').length;
+            
+            let over60Count = 0;
+            let soldCount = 0;
+            activeItems.forEach(i => {
+                const days = calculateDaysInStock(i.receiveDate, i.soldDate, i.status);
+                if (days > 60 && i.status !== 'Sold') over60Count++;
+                if (i.status === 'Sold') soldCount++;
+            });
+            document.getElementById('kpiOver60').textContent = over60Count;
+            document.getElementById('kpiSold').textContent = soldCount;
+
+            // Filter data
+            const filtered = window.inventoryData.filter(item => {
+                if (currentTab === 'archived') {
+                    if (!item.archived) return false;
+                } else {
+                    if (item.archived) return false;
+                    if (currentTab !== 'all' && item.category !== currentTab) return false;
+                }
+
+                if (statusVal !== 'all' && item.status !== statusVal) return false;
+
+                if (searchVal) {
+                    const matchStr = `${item.serial} ${item.brand} ${item.model} ${item.vendor} ${item.notes}`.toLowerCase();
+                    if (!matchStr.includes(searchVal)) return false;
+                }
+                return true;
+            });
+
+            const container = document.getElementById('inventoryContainer');
+            container.innerHTML = '';
+
+            const categoriesConfig = [
+                { key: 'new_laptop', title: 'New Laptops', subtitle: 'Factory new laptop inventory' },
+                { key: 'refurb_laptop', title: 'Refurbished Laptops', subtitle: 'Certified pre-owned laptops' },
+                { key: 'new_desktop', title: 'New Desktops', subtitle: 'Factory new desktop towers' },
+                { key: 'refurb_desktop', title: 'Refurbished Desktops', subtitle: 'Refurbished desktop workstations' }
+            ];
+
+            if (currentTab === 'archived') {
+                renderTableSection(container, 'Archived Items', 'Items moved to archive', filtered, true);
+            } else if (currentTab === 'all') {
+                categoriesConfig.forEach(cat => {
+                    const catItems = filtered.filter(i => i.category === cat.key);
+                    renderTableSection(container, cat.title, cat.subtitle, catItems, false);
+                });
+            } else {
+                const activeCat = categoriesConfig.find(c => c.key === currentTab);
+                if (activeCat) {
+                    renderTableSection(container, activeCat.title, activeCat.subtitle, filtered, false);
+                }
+            }
+        }
+
+        function renderTableSection(container, title, subtitle, items, isArchive) {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm";
+
+            let headerHTML = `
+                <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                    <div>
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ${title} (${items.length})
+                        </h2>
+                        <p class="text-xs text-slate-400">${subtitle}</p>
+                    </div>
+                </div>
+            `;
+
+            if (items.length === 0) {
+                sectionDiv.innerHTML = headerHTML + `
+                    <div class="p-8 text-center text-slate-500 text-xs">
+                        No inventory records found in this category.
+                    </div>
+                `;
+                container.appendChild(sectionDiv);
+                return;
+            }
+
+            let tableHTML = `
+                ${headerHTML}
+                <div class="table-container">
+                    <table class="w-full text-left border-collapse text-xs whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-800">
+                                <th class="p-3">Serial Number</th>
+                                <th class="p-3">Brand</th>
+                                <th class="p-3">Model</th>
+                                <th class="p-3">Vendor</th>
+                                <th class="p-3">Condition</th>
+                                <th class="p-3">Cost</th>
+                                <th class="p-3">Retail</th>
+                                <th class="p-3">Profit</th>
+                                <th class="p-3">Margin %</th>
+                                <th class="p-3">Passed</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Purchase Date</th>
+                                <th class="p-3">Receive Date</th>
+                                <th class="p-3">Days Stock</th>
+                                <th class="p-3">RMA Date</th>
+                                <th class="p-3">Sold Date</th>
+                                <th class="p-3">Location</th>
+                                <th class="p-3">Notes</th>
+                                <th class="p-3 sticky-action text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/60">
+            `;
+
+            items.forEach(item => {
+                const days = calculateDaysInStock(item.receiveDate, item.soldDate, item.status);
+                const isOver60 = days > 60 && item.status !== 'Sold' && !isArchive;
+                const rowBg = isOver60 ? 'bg-red-950/40 hover:bg-red-900/40' : 'hover:bg-slate-800/40';
+
+                const profitVal = parseFloat(item.profit) || 0;
+                const marginVal = parseFloat(item.margin) || 0;
+
+                tableHTML += `
+                    <tr class="${rowBg} transition">
+                        <td class="p-2.5 font-mono text-white">
+                            <input type="text" value="${item.serial || ''}" onchange="updateFieldInline('${item.id}', 'serial', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="text" value="${item.brand || ''}" onchange="updateFieldInline('${item.id}', 'brand', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="text" value="${item.model || ''}" onchange="updateFieldInline('${item.id}', 'model', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="text" value="${item.vendor || ''}" onchange="updateFieldInline('${item.id}', 'vendor', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="text" value="${item.condition || ''}" onchange="updateFieldInline('${item.id}', 'condition', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="number" step="0.01" value="${item.cost || 0}" onchange="updateFieldInline('${item.id}', 'cost', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="number" step="0.01" value="${item.retail || 0}" onchange="updateFieldInline('${item.id}', 'retail', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-20 focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5 font-bold text-emerald-400">
+                            $${profitVal.toFixed(2)}
+                        </td>
+                        <td class="p-2.5 font-bold text-emerald-400">
+                            ${marginVal.toFixed(1)}%
+                        </td>
+                        <td class="p-2.5">
+                            <select onchange="updateFieldInline('${item.id}', 'passed', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                                <option value="Yes" ${item.passed === 'Yes' ? 'selected' : ''}>Yes</option>
+                                <option value="No" ${item.passed === 'No' ? 'selected' : ''}>No</option>
+                                <option value="Pending" ${item.passed === 'Pending' ? 'selected' : ''}>Pending</option>
+                            </select>
+                        </td>
+                        <td class="p-2.5">
+                            <select onchange="updateFieldInline('${item.id}', 'status', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                                <option value="In Stock" ${item.status === 'In Stock' ? 'selected' : ''}>In Stock</option>
+                                <option value="Ready" ${item.status === 'Ready' ? 'selected' : ''}>Ready</option>
+                                <option value="Sold" ${item.status === 'Sold' ? 'selected' : ''}>Sold</option>
+                                <option value="RMA" ${item.status === 'RMA' ? 'selected' : ''}>RMA</option>
+                            </select>
+                        </td>
+                        <td class="p-2.5">
+                            <input type="date" value="${item.purchaseDate || ''}" onchange="updateFieldInline('${item.id}', 'purchaseDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="date" value="${item.receiveDate || ''}" onchange="updateFieldInline('${item.id}', 'receiveDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5 font-bold">
+                            <span class="${isOver60 ? 'text-red-400 bg-red-950 px-2 py-1 rounded border border-red-800 animate-pulse' : 'text-slate-300'}">
+                                ${days}d ${isOver60 ? '⚠️ >60d' : ''}
+                            </span>
+                        </td>
+                        <td class="p-2.5">
+                            <input type="date" value="${item.rmaDate || ''}" onchange="updateFieldInline('${item.id}', 'rmaDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <input type="date" value="${item.soldDate || ''}" onchange="updateFieldInline('${item.id}', 'soldDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                        </td>
+                        <td class="p-2.5">
+                            <select onchange="updateFieldInline('${item.id}', 'location', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                                <option value="Store" ${item.location === 'Store' ? 'selected' : ''}>Store</option>
+                                <option value="Sold" ${item.location === 'Sold' ? 'selected' : ''}>Sold</option>
+                                <option value="Warehouse" ${item.location === 'Warehouse' ? 'selected' : ''}>Warehouse</option>
+                                <option value="Bench" ${item.location === 'Bench' ? 'selected' : ''}>Bench</option>
+                            </select>
+                        </td>
+                        <td class="p-2.5">
+                            <input type="text" value="${item.notes || ''}" onchange="updateFieldInline('${item.id}', 'notes', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-red-500" placeholder="Notes...">
+                        </td>
+                        <td class="p-2.5 sticky-action text-right space-x-1">
+                            <button onclick="openModal('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs transition" title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="toggleArchive('${item.id}')" class="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-2.5 py-1 rounded text-xs transition" title="${isArchive ? 'Restore' : 'Archive'}">
+                                <i class="fa-solid ${isArchive ? 'fa-box-open' : 'fa-box-archive'}"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2.5 py-1 rounded text-xs transition" title="Delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            sectionDiv.innerHTML = tableHTML;
+            container.appendChild(sectionDiv);
+        }
+
+        async function loadSampleData() {
+            if (!confirm("Load sample records across Laptops and Desktops into Firebase?")) return;
+            const samples = [
+                { category: 'new_laptop', serial: 'AP-MBP-9921', brand: 'Apple', model: 'MacBook Pro 16', vendor: 'Apple Direct', condition: 'New', cost: 1800, retail: 2399, profit: 599, margin: 25.0, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-09-04', receiveDate: '2026-09-07', rmaDate: '', soldDate: '', location: 'Store', notes: 'M3 Max, pristine box', archived: false },
+                { category: 'refurb_laptop', serial: 'DL-LAT-4412', brand: 'Dell', model: 'Latitude 5420', vendor: 'TechSply', condition: 'Grade A', cost: 220, retail: 450, profit: 230, margin: 51.1, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-10-29', receiveDate: '2026-10-31', rmaDate: '', soldDate: '', location: 'Warehouse', notes: 'Includes 65W USB-C charger', archived: false },
+                { category: 'new_desktop', serial: 'HP-ENV-8830', brand: 'HP', model: 'Envy Desktop TE02', vendor: 'HP Inc', condition: 'New', cost: 750, retail: 1099, profit: 349, margin: 31.7, passed: 'Yes', status: 'Ready', purchaseDate: '2026-06-10', receiveDate: '2026-06-15', rmaDate: '', soldDate: '', location: 'Store', notes: 'Core i7, 32GB RAM', archived: false },
+                { category: 'refurb_desktop', serial: 'LN-THK-1092', brand: 'Lenovo', model: 'ThinkCentre M720q', vendor: 'RefurbPro', condition: 'Grade A', cost: 130, retail: 280, profit: 150, margin: 53.6, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-07-01', receiveDate: '2026-07-05', rmaDate: '', soldDate: '', location: 'Bench', notes: 'Tiny form factor PC', archived: false }
+            ];
+
+            try {
+                const batch = window.firebaseModules.writeBatch(window.db);
+                samples.forEach(s => {
+                    const docRef = window.firebaseModules.doc(window.inventoryCollection);
+                    batch.set(docRef, s);
+                });
+                await batch.commit();
+                alert("Sample data successfully loaded into Firebase!");
+            } catch (err) {
+                console.error("Batch sample load error:", err);
+                alert("Error loading sample data.");
+            }
+        }
+
+        function exportCSV() {
+            if (window.inventoryData.length === 0) {
+                alert("No inventory data to export.");
+                return;
+            }
+            let csv = "ID,Category,Serial,Brand,Model,Vendor,Condition,Cost,Retail,Profit,Margin,Passed,Status,PurchaseDate,ReceiveDate,RmaDate,SoldDate,Location,Notes\n";
+            window.inventoryData.forEach(i => {
+                csv += `"${i.id}","${i.category || ''}","${i.serial || ''}","${i.brand || ''}","${i.model || ''}","${i.vendor || ''}","${i.condition || ''}",${i.cost || 0},${i.retail || 0},${i.profit || 0},${i.margin || 0},"${i.passed || ''}","${i.status || ''}","${i.purchaseDate || ''}","${i.receiveDate || ''}","${i.rmaDate || ''}","${i.soldDate || ''}","${i.location || ''}","${(i.notes || '').replace(/"/g, '""')}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `inventory_export_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.inventoryData, null, 2));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = `inventory_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) throw new Error("Invalid format");
+                    const batch = window.firebaseModules.writeBatch(window.db);
+                    imported.forEach(item => {
+                        const { id, ...data } = item;
+                        const docRef = window.firebaseModules.doc(window.inventoryCollection);
+                        batch.set(docRef, data);
+                    });
+                    await batch.commit();
+                    alert("Backup successfully restored to Firebase!");
+                } catch (err) {
+                    console.error("Import error:", err);
+                    alert("Invalid JSON file format.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
