@@ -51,7 +51,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • Bulk Intake • Exclusive Aging Tiers & RMA Tracking</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • Bulk Intake • Exclusive Aging Tiers & Quick Sold Actions</p>
                 </div>
             </div>
 
@@ -87,7 +87,7 @@
     <!-- Main Dashboard Body -->
     <main class="w-full px-6 py-6 space-y-6">
 
-        <!-- KPI Summary Cards (Mutually Exclusive Aging Tiers) -->
+        <!-- KPI Summary Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-9 gap-3">
             <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
                 <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
@@ -172,7 +172,7 @@
 
     </main>
 
-    <!-- Modal Form for Adding/Editing Item -->
+    <!-- Modal Form for Adding/Editing/Quick Viewing Item -->
     <div id="itemModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div class="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 z-10">
@@ -304,8 +304,8 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                    <button type="button" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">Cancel</button>
-                    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-xs font-semibold transition shadow">Save Item</button>
+                    <button type="button" onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition">Close / Cancel</button>
+                    <button type="submit" id="modalSaveBtn" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-xs font-semibold transition shadow">Save Item</button>
                 </div>
             </form>
         </div>
@@ -503,13 +503,25 @@
             document.getElementById('f_margin').value = `${margin.toFixed(1)}%`;
         }
 
-        function openModal(id = null) {
+        function openModal(id = null, isQuickView = false) {
             document.getElementById('itemModal').classList.remove('hidden');
             const today = new Date().toISOString().split('T')[0];
+            const formInputs = document.querySelectorAll('#itemForm input, #itemForm select, #itemForm textarea');
+            const saveBtn = document.getElementById('modalSaveBtn');
+
             if (id) {
-                document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-laptop text-red-500"></i> Edit Inventory Item`;
                 const item = window.inventoryData.find(i => i.id === id);
                 if (item) {
+                    if (isQuickView) {
+                        document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-eye text-sky-400"></i> Quick View Item (Read-Only)`;
+                        formInputs.forEach(el => el.disabled = true);
+                        saveBtn.style.display = 'none';
+                    } else {
+                        document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-laptop text-red-500"></i> Edit Inventory Item`;
+                        formInputs.forEach(el => el.disabled = false);
+                        saveBtn.style.display = 'inline-block';
+                    }
+
                     document.getElementById('editId').value = item.id;
                     document.getElementById('f_category').value = item.category || 'new_laptop';
                     document.getElementById('f_serial').value = item.serial || '';
@@ -533,6 +545,8 @@
                 }
             } else {
                 document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-laptop text-red-500"></i> Add New Inventory Item`;
+                formInputs.forEach(el => el.disabled = false);
+                saveBtn.style.display = 'inline-block';
                 document.getElementById('itemForm').reset();
                 document.getElementById('editId').value = '';
                 document.getElementById('f_receiveDate').value = today;
@@ -542,6 +556,9 @@
 
         function closeModal() {
             document.getElementById('itemModal').classList.add('hidden');
+            // Ensure inputs are re-enabled when closing modal
+            document.querySelectorAll('#itemForm input, #itemForm select, #itemForm textarea').forEach(el => el.disabled = false);
+            document.getElementById('modalSaveBtn').style.display = 'inline-block';
         }
 
         function openBulkModal() {
@@ -593,7 +610,7 @@
                 rmaReason: document.getElementById('f_rmaReason').value.trim(),
                 techNotes: document.getElementById('f_techNotes').value.trim(),
                 notes: document.getElementById('f_notes').value.trim(),
-                archived: false,
+                archived: (document.getElementById('f_status').value === 'Sold' || Boolean(document.getElementById('f_soldDate').value)),
                 updatedAt: new Date().toISOString()
             };
 
@@ -695,6 +712,34 @@
             }
         }
 
+        // Quick Mark as Sold via Dollar Sign Button
+        async function markAsSold(id) {
+            const item = window.inventoryData.find(i => i.id === id);
+            if (!item) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            item.status = "Sold";
+            item.soldDate = today;
+            item.location = "Sold";
+            item.archived = true;
+
+            try {
+                if (window.firebaseModules && window.db && !id.startsWith('local_')) {
+                    const docRef = window.firebaseModules.doc(window.db, "laptops", id);
+                    await window.firebaseModules.updateDoc(docRef, {
+                        status: "Sold",
+                        soldDate: today,
+                        location: "Sold",
+                        archived: true
+                    });
+                }
+                renderApp();
+            } catch (err) {
+                console.error("Mark sold error:", err);
+                alert("Failed to update item as sold.");
+            }
+        }
+
         async function updateFieldInline(id, field, value) {
             const item = window.inventoryData.find(i => i.id === id);
             if (!item) return;
@@ -706,15 +751,26 @@
                 item.profit = item.retail - item.cost;
                 item.margin = item.retail > 0 ? (item.profit / item.retail) * 100 : 0;
             }
+            if (field === 'status' && value === 'Sold') {
+                if (!item.soldDate) {
+                    item.soldDate = new Date().toISOString().split('T')[0];
+                }
+                item.location = 'Sold';
+                item.archived = true;
+            }
 
             try {
                 if (window.firebaseModules && window.db && !id.startsWith('local_')) {
                     const docRef = window.firebaseModules.doc(window.db, "laptops", id);
-                    await window.firebaseModules.updateDoc(docRef, {
+                    const updatePayload = {
                         [field]: item[field],
                         profit: item.profit,
-                        margin: item.margin
-                    });
+                        margin: item.margin,
+                        soldDate: item.soldDate,
+                        location: item.location,
+                        archived: item.archived
+                    };
+                    await window.firebaseModules.updateDoc(docRef, updatePayload);
                 }
                 renderApp();
             } catch (err) {
@@ -882,7 +938,6 @@
                 if (isSold) {
                     soldTotalCount++;
                 } else {
-                    // Mutually exclusive aging tier counting
                     if (days >= 91) {
                         over90Count++;
                     } else if (days >= 61) {
@@ -1058,8 +1113,11 @@
 
                 tableHTML += `
                     <tr class="${rowBg} transition">
-                        <td class="p-2.5 font-mono text-white">
-                            <input type="text" value="${item.serial || ''}" onchange="updateFieldInline('${item.id}', 'serial', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-red-500">
+                        <td class="p-2.5 font-mono text-white flex items-center gap-2">
+                            <button onclick="openModal('${item.id}', true)" class="bg-sky-600/20 hover:bg-sky-600 text-sky-400 hover:text-white px-2 py-1 rounded text-xs transition" title="Quick View Full Record">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <input type="text" value="${item.serial || ''}" onchange="updateFieldInline('${item.id}', 'serial', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-28 focus:outline-none focus:border-red-500">
                         </td>
                         <td class="p-2.5">
                             <input type="text" value="${item.brand || ''}" onchange="updateFieldInline('${item.id}', 'brand', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-red-500">
@@ -1138,6 +1196,9 @@
                             <input type="text" value="${item.notes || ''}" onchange="updateFieldInline('${item.id}', 'notes', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white w-32 focus:outline-none focus:border-red-500" placeholder="Notes...">
                         </td>
                         <td class="p-2.5 sticky-action text-right space-x-1">
+                            <button onclick="markAsSold('${item.id}')" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-2.5 py-1 rounded text-xs transition" title="Mark as Sold (Auto-fill Sold Date)">
+                                <i class="fa-solid fa-dollar-sign"></i>
+                            </button>
                             <button onclick="openModal('${item.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded text-xs transition" title="Edit">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
