@@ -49,7 +49,7 @@
                             <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting to Firebase...
                         </span>
                     </h1>
-                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • >60 Days Stock Alert • Profit Tracking</p>
+                    <p class="text-xs text-slate-400">Manage Laptops & Desktops • 30/60/90 & RMA Tracking • Profit Analytics</p>
                 </div>
             </div>
 
@@ -57,9 +57,6 @@
             <div class="flex flex-wrap items-center gap-2">
                 <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow transition flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i> Add Item
-                </button>
-                <button onclick="loadSampleData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-database text-xs text-blue-400"></i> Sample Data
                 </button>
                 <button onclick="exportCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium border border-slate-700 transition flex items-center gap-1.5" title="Export CSV">
                     <i class="fa-solid fa-file-csv text-emerald-400"></i> CSV
@@ -78,31 +75,39 @@
     <!-- Main Dashboard Body -->
     <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-        <!-- KPI Summary Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
-                <p id="kpiNewLaptops" class="text-2xl font-extrabold text-white mt-1">0</p>
+        <!-- KPI Summary Cards (Including 30, 60, 90, RMA) -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Laptops</p>
+                <p id="kpiNewLaptops" class="text-xl font-extrabold text-white mt-1">0</p>
             </div>
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Refurb Laptops</p>
-                <p id="kpiRefurbLaptops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Refurb Laptops</p>
+                <p id="kpiRefurbLaptops" class="text-xl font-extrabold text-white mt-1">0</p>
             </div>
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">New Desktops</p>
-                <p id="kpiNewDesktops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">New Desktops</p>
+                <p id="kpiNewDesktops" class="text-xl font-extrabold text-white mt-1">0</p>
             </div>
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Refurb Desktops</p>
-                <p id="kpiRefurbDesktops" class="text-2xl font-extrabold text-white mt-1">0</p>
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Refurb Desktops</p>
+                <p id="kpiRefurbDesktops" class="text-xl font-extrabold text-white mt-1">0</p>
             </div>
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-red-400 uppercase tracking-wider">>60 Days Alert</p>
-                <p id="kpiOver60" class="text-2xl font-extrabold text-red-400 mt-1">0</p>
+            <div class="bg-yellow-950/40 border border-yellow-800/60 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-yellow-400 uppercase tracking-wider">>30 Days</p>
+                <p id="kpiOver30" class="text-xl font-extrabold text-yellow-400 mt-1">0</p>
             </div>
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm">
-                <p class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Sold Units</p>
-                <p id="kpiSold" class="text-2xl font-extrabold text-emerald-400 mt-1">0</p>
+            <div class="bg-orange-950/40 border border-orange-800/60 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-orange-400 uppercase tracking-wider">>60 Days</p>
+                <p id="kpiOver60" class="text-xl font-extrabold text-orange-400 mt-1">0</p>
+            </div>
+            <div class="bg-red-950/40 border border-red-800/60 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-red-400 uppercase tracking-wider">>90 Days</p>
+                <p id="kpiOver90" class="text-xl font-extrabold text-red-400 mt-1">0</p>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-xl shadow-sm">
+                <p class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">RMA Active</p>
+                <p id="kpiRma" class="text-xl font-extrabold text-sky-400 mt-1">0</p>
             </div>
         </div>
 
@@ -435,7 +440,6 @@
                         await window.firebaseModules.addDoc(window.inventoryCollection, payload);
                     }
                 } else {
-                    // Local fallback
                     if (id) {
                         const idx = window.inventoryData.findIndex(i => i.id === id);
                         if (idx !== -1) window.inventoryData[idx] = { id, ...payload };
@@ -520,6 +524,15 @@
             return diffDays >= 0 ? diffDays : 0;
         }
 
+        function calculateRmaDays(rmaDate) {
+            if (!rmaDate) return 0;
+            const start = new Date(rmaDate);
+            const end = new Date();
+            const diffTime = end - start;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 ? diffDays : 0;
+        }
+
         function renderApp() {
             const searchVal = document.getElementById('searchInput').value.toLowerCase();
             const statusVal = document.getElementById('statusFilter').value;
@@ -533,15 +546,30 @@
             document.getElementById('kpiNewDesktops').textContent = activeItems.filter(i => i.category === 'new_desktop').length;
             document.getElementById('kpiRefurbDesktops').textContent = activeItems.filter(i => i.category === 'refurb_desktop').length;
             
+            let over30Count = 0;
             let over60Count = 0;
-            let soldCount = 0;
+            let over90Count = 0;
+            let rmaActiveCount = 0;
+
             activeItems.forEach(i => {
                 const days = calculateDaysInStock(i.receiveDate, i.soldDate, i.status);
-                if (days > 60 && i.status !== 'Sold') over60Count++;
-                if (i.status === 'Sold') soldCount++;
+                const isSoldOrArchived = (i.status === 'Sold' || i.soldDate);
+                
+                if (!isSoldOrArchived) {
+                    if (days > 30) over30Count++;
+                    if (days > 60) over60Count++;
+                    if (days > 90) over90Count++;
+                }
+
+                if (i.rmaDate) {
+                    rmaActiveCount++;
+                }
             });
+
+            document.getElementById('kpiOver30').textContent = over30Count;
             document.getElementById('kpiOver60').textContent = over60Count;
-            document.getElementById('kpiSold').textContent = soldCount;
+            document.getElementById('kpiOver90').textContent = over90Count;
+            document.getElementById('kpiRma').textContent = rmaActiveCount;
 
             const filtered = window.inventoryData.filter(item => {
                 if (currentTab === 'archived') {
@@ -603,7 +631,7 @@
             if (items.length === 0) {
                 sectionDiv.innerHTML = headerHTML + `
                     <div class="p-8 text-center text-slate-500 text-xs">
-                        No inventory records found in this category. Click <b>+ Add Item</b> or <b>Sample Data</b> above.
+                        No inventory records found in this category. Click <b>+ Add Item</b> above.
                     </div>
                 `;
                 container.appendChild(sectionDiv);
@@ -630,7 +658,7 @@
                                 <th class="p-3">Purchase Date</th>
                                 <th class="p-3">Receive Date</th>
                                 <th class="p-3">Days Stock</th>
-                                <th class="p-3">RMA Date</th>
+                                <th class="p-3">RMA Date / Out</th>
                                 <th class="p-3">Sold Date</th>
                                 <th class="p-3">Location</th>
                                 <th class="p-3">Notes</th>
@@ -642,8 +670,27 @@
 
             items.forEach(item => {
                 const days = calculateDaysInStock(item.receiveDate, item.soldDate, item.status);
-                const isOver60 = days > 60 && item.status !== 'Sold' && !isArchive;
-                const rowBg = isOver60 ? 'bg-red-950/40 hover:bg-red-900/40' : 'hover:bg-slate-800/40';
+                const isSold = (item.status === 'Sold' || item.soldDate);
+                const hasRma = Boolean(item.rmaDate);
+                const rmaDays = hasRma ? calculateRmaDays(item.rmaDate) : 0;
+
+                // Shading logic as requested:
+                // RMA out: gray-bluish shade
+                // Stock >90: red shade
+                // Stock >60: orange shade
+                // Stock >30: yellow shade
+                let rowBg = 'hover:bg-slate-800/40';
+                if (hasRma && !isSold && !isArchive) {
+                    rowBg = 'bg-slate-800/60 border-l-4 border-sky-400 hover:bg-slate-800/90';
+                } else if (!isSold && !isArchive) {
+                    if (days > 90) {
+                        rowBg = 'bg-red-950/40 hover:bg-red-900/40';
+                    } else if (days > 60) {
+                        rowBg = 'bg-orange-950/40 hover:bg-orange-900/40';
+                    } else if (days > 30) {
+                        rowBg = 'bg-yellow-950/30 hover:bg-yellow-900/30';
+                    }
+                }
 
                 const profitVal = parseFloat(item.profit) || 0;
                 const marginVal = parseFloat(item.margin) || 0;
@@ -699,12 +746,15 @@
                             <input type="date" value="${item.receiveDate || ''}" onchange="updateFieldInline('${item.id}', 'receiveDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
                         </td>
                         <td class="p-2.5 font-bold">
-                            <span class="${isOver60 ? 'text-red-400 bg-red-950 px-2 py-1 rounded border border-red-800 animate-pulse' : 'text-slate-300'}">
-                                ${days}d ${isOver60 ? '⚠️ >60d' : ''}
+                            <span class="${days > 90 ? 'text-red-400' : days > 60 ? 'text-orange-400' : days > 30 ? 'text-yellow-400' : 'text-slate-300'}">
+                                ${days}d ${days > 90 ? '⚠️ >90d' : days > 60 ? '⚠️ >60d' : days > 30 ? '⚠️ >30d' : ''}
                             </span>
                         </td>
                         <td class="p-2.5">
-                            <input type="date" value="${item.rmaDate || ''}" onchange="updateFieldInline('${item.id}', 'rmaDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                            <div class="flex items-center gap-2">
+                                <input type="date" value="${item.rmaDate || ''}" onchange="updateFieldInline('${item.id}', 'rmaDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
+                                ${hasRma ? `<span class="text-sky-400 font-semibold text-[11px] bg-sky-950 px-2 py-0.5 rounded border border-sky-800">Out: ${rmaDays}d</span>` : ''}
+                            </div>
                         </td>
                         <td class="p-2.5">
                             <input type="date" value="${item.soldDate || ''}" onchange="updateFieldInline('${item.id}', 'soldDate', this.value)" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-red-500">
@@ -745,33 +795,6 @@
             container.appendChild(sectionDiv);
         }
 
-        async function loadSampleData() {
-            if (!confirm("Load sample records across Laptops and Desktops?")) return;
-            const samples = [
-                { category: 'new_laptop', serial: 'AP-MBP-9921', brand: 'Apple', model: 'MacBook Pro 16', vendor: 'Apple Direct', condition: 'New', cost: 1800, retail: 2399, profit: 599, margin: 25.0, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-09-04', receiveDate: '2026-09-07', rmaDate: '', soldDate: '', location: 'Store', notes: 'M3 Max, pristine box', archived: false },
-                { category: 'refurb_laptop', serial: 'DL-LAT-4412', brand: 'Dell', model: 'Latitude 5420', vendor: 'TechSply', condition: 'Grade A', cost: 220, retail: 450, profit: 230, margin: 51.1, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-10-29', receiveDate: '2026-10-31', rmaDate: '', soldDate: '', location: 'Warehouse', notes: 'Includes 65W charger', archived: false },
-                { category: 'new_desktop', serial: 'HP-ENV-8830', brand: 'HP', model: 'Envy Desktop TE02', vendor: 'HP Inc', condition: 'New', cost: 750, retail: 1099, profit: 349, margin: 31.7, passed: 'Yes', status: 'Ready', purchaseDate: '2026-06-10', receiveDate: '2026-06-15', rmaDate: '', soldDate: '', location: 'Store', notes: 'Core i7, 32GB RAM', archived: false },
-                { category: 'refurb_desktop', serial: 'LN-THK-1092', brand: 'Lenovo', model: 'ThinkCentre M720q', vendor: 'RefurbPro', condition: 'Grade A', cost: 130, retail: 280, profit: 150, margin: 53.6, passed: 'Yes', status: 'In Stock', purchaseDate: '2026-07-01', receiveDate: '2026-07-05', rmaDate: '', soldDate: '', location: 'Bench', notes: 'Tiny form factor PC', archived: false }
-            ];
-
-            try {
-                if (window.firebaseModules && window.db) {
-                    const batch = window.firebaseModules.writeBatch(window.db);
-                    samples.forEach(s => {
-                        const docRef = window.firebaseModules.doc(window.inventoryCollection);
-                        batch.set(docRef, s);
-                    });
-                    await batch.commit();
-                } else {
-                    samples.forEach(s => window.inventoryData.push({ id: 'local_' + Math.random(), ...s }));
-                    renderApp();
-                }
-                alert("Sample data loaded successfully!");
-            } catch (err) {
-                console.error("Sample load error:", err);
-            }
-        }
-
         function exportCSV() {
             if (window.inventoryData.length === 0) {
                 alert("No inventory data to export.");
@@ -807,6 +830,7 @@
                     if (!Array.isArray(imported)) throw new Error("Invalid format");
                     if (window.firebaseModules && window.db) {
                         const batch = window.firebaseModules.writeBatch(window.db);
+                        imported.exported = true;
                         imported.forEach(item => {
                             const { id, ...data } = item;
                             const docRef = window.firebaseModules.doc(window.inventoryCollection);
